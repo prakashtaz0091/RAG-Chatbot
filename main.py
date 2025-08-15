@@ -1,7 +1,7 @@
 import os
 from src.core.config import RAGConfig
 from src.core.rag_chatbot import RAGChatbot
-from src.implementations.llms.ollama_llm import OllamaLLM
+from src.implementations.llms.ollama_llm import ImplementOllamaLLM
 from src.implementations.embeddings.ollama_embedding import OllamaEmbedding
 from src.implementations.vectorstores.faiss_store import FAISSVectorStore
 from src.utils.logger import get_logger
@@ -15,7 +15,7 @@ def init_chatbot():
     config = RAGConfig.from_env()
 
     # Initialize components with dependency injection
-    llm_interface = OllamaLLM(
+    llm_interface = ImplementOllamaLLM(
         model_name=config.ollama_llm_model, base_url=config.ollama_base_url
     )
     embedding_interface = OllamaEmbedding(

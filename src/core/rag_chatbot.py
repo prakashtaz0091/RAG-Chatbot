@@ -1,8 +1,7 @@
 import os
 from typing import Any, Dict, List, Optional
 
-from langchain.chains import ConversationalRetrievalChain
-from langchain.memory import ConversationBufferWindowMemory
+from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 
 from src.core.config import RAGConfig
@@ -36,14 +35,6 @@ class RAGChatbot:
         self.vectorstore = None
         self.chain = None
 
-        # Initialize memory
-        self.memory = ConversationBufferWindowMemory(
-            k=self.config.memory_window,
-            memory_key="chat_history",
-            return_messages=True,
-            output_key="answer",
-        )
-
         # Custom prompt template
         self.prompt_template = PromptTemplate(
             template="""You are a helpful AI assistant. Use the following context to answer the user's question.
@@ -51,11 +42,9 @@ class RAGChatbot:
            
             Context: {context}
            
-            Chat History: {chat_history}
-            
-            Human: {question}
+            Question: {question}
             Assistant: """,
-            input_variables=["context", "chat_history", "question"],
+            input_variables=["context", "question"],
         )
 
     def setup_vectorstore(
@@ -111,57 +100,37 @@ class RAGChatbot:
             logger.info(f"Vector store saved to {vectorstore_path}")
 
     def setup_chain(self):
-        """Setup the conversational retrieval chain"""
+        """Setup a retrieval QA chain (stateless)"""
         if not self.vectorstore:
             raise ValueError(
                 "Vector store not initialized. Call setup_vectorstore() first."
             )
 
-        # Create retriever
         retriever = self.vectorstore.as_retriever(
             search_type=self.config.search_type,
             search_kwargs={"k": self.config.search_k},
         )
 
-        # Create conversational chain
-        self.chain = ConversationalRetrievalChain.from_llm(
+        # No memory, pure retrieval
+        self.chain = RetrievalQA.from_chain_type(
             llm=self.llm,
             retriever=retriever,
-            memory=self.memory,
             return_source_documents=True,
-            verbose=True,
-            combine_docs_chain_kwargs={"prompt": self.prompt_template},
+            chain_type_kwargs={"prompt": self.prompt_template},
         )
 
-        logger.info("Conversational chain setup complete")
-
     def chat(self, question: str) -> Dict[str, Any]:
-        """Process a chat message and return response with sources"""
         if not self.chain:
             raise ValueError("Chain not initialized. Call setup_chain() first.")
 
         try:
-            response = self.chain({"question": question})
-
+            response = self.chain.invoke({"query": question})
             return {
-                "answer": response["answer"],
+                "answer": response["result"],
                 "source_documents": response.get("source_documents", []),
-                "chat_history": self.memory.chat_memory.messages,
             }
         except Exception as e:
-            logger.error(f"Error processing chat: {e}")
             return {
-                "answer": f"I encountered an error: {str(e)}",
+                "answer": f"Error: {str(e)}",
                 "source_documents": [],
-                "chat_history": self.memory.chat_memory.messages,
             }
-
-    def clear_memory(self):
-        """Clear chat memory"""
-        self.memory.clear()
-        logger.info("Chat memory cleared")
-
-    def get_memory_summary(self) -> List[str]:
-        """Get current chat history"""
-        messages = self.memory.chat_memory.messages
-        return [f"{msg.type}: {msg.content}" for msg in messages]

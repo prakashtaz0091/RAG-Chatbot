@@ -1,8 +1,8 @@
-from langchain_community.llms import Ollama
+from langchain_ollama import OllamaLLM
 from src.interfaces.llm_interface import LLMInterface
 
 
-class OllamaLLM(LLMInterface):
+class ImplementOllamaLLM(LLMInterface):
     """Ollama LLM implementation"""
 
     def __init__(
@@ -12,9 +12,11 @@ class OllamaLLM(LLMInterface):
         self.base_url = base_url
 
     def get_llm(self):
-        return Ollama(
+        model = OllamaLLM(
             model=self.model_name,
             base_url=self.base_url,
             temperature=0.7,
             num_predict=512,
         )
+
+        return model
