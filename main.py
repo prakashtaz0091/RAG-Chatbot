@@ -9,9 +9,8 @@ from src.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-def main():
-    """Main function to run the RAG chatbot"""
-
+def init_chatbot():
+    """Initialize the RAG Chatbot for API usage"""
     # Load configuration
     config = RAGConfig.from_env()
 
@@ -33,13 +32,24 @@ def main():
     )
 
     try:
-        # Setup vector store
-        chatbot.setup_vectorstore()
-
-        # Setup chain
-        chatbot.setup_chain()
-
+        chatbot.setup_vectorstore()  # Setup vector store
+        chatbot.setup_chain()  # Setup chain
+    except Exception as e:
+        logger.error(f"Error initializing chatbot: {e}")
+        return None
+    else:
         print("🤖 RAG Chatbot initialized successfully!")
+        return chatbot
+
+
+def main():
+    """Main function to run the RAG chatbot"""
+
+    chatbot = init_chatbot()
+    if chatbot is None:
+        return
+
+    try:
         print("Type 'quit' to exit, 'clear' to clear memory\n")
 
         # Interactive chat loop
